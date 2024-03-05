@@ -122,15 +122,14 @@ class Main:
 
         # take book
         self.iconTake = PhotoImage(file='icons/takeBook.png')
-        self.btnTake = Button(self.topFrame, text='Take Book', image=self.iconTake, font='arial 12 bold', padx=10,
-                                compound=LEFT)
+        self.btnTake = Button(self.topFrame, text='Take Book', image=self.iconTake, font='arial 12 bold', padx=10, compound=LEFT, command=self.takeBook)
         self.btnTake.pack(side=LEFT)
 
         # return book
         self.iconReturn = PhotoImage(file='icons/returnBook.png')
-        self.btnTake = Button(self.topFrame, text='Return Book', image=self.iconReturn, font='arial 12 bold', padx=10,
-                                compound=LEFT)
-        self.btnTake.pack(side=LEFT)
+        self.btnReturn = Button(self.topFrame, text='Return Book', image=self.iconReturn, font='arial 12 bold', padx=10, compound=LEFT, command=self.returnBook)
+        self.btnReturn.pack(side=LEFT)
+
 
         # tabs
         self.tabs = ttk.Notebook(self.centerLeftFrame, width=900, height=660)
@@ -152,6 +151,11 @@ class Main:
         # list details
         self.listDetails = Listbox(self.tab1, width=80, height=30, bd=5, font='times 12 bold')
         self.listDetails.grid(row=0, column=1, padx=(10, 0), pady=10, sticky=N)
+
+        # Botão para excluir um livro
+        self.btnDeleteBook = Button(self.topFrame, text='Delete Book', font='arial 12 bold', padx=10, command=self.deleteBook)
+        self.btnDeleteBook.pack(side=LEFT)
+
 
         displayBooks(self)
 
@@ -191,7 +195,67 @@ class Main:
             for book in taken_books:
                 self.listBooks.insert(END, str(book[0]) + "-" + book[1])
 
+    def deleteBook(self):
+        if not self.listBooks.curselection():
+            messagebox.showwarning("Warning", "Please select a book to delete.")
+            return
 
+        selected_book = str(self.listBooks.get(self.listBooks.curselection()))
+        book_id = selected_book.split('-')[0]
+
+        confirmation = messagebox.askyesno("Confirmation", f"Do you want to delete the book {selected_book} ?")
+
+        if confirmation:
+            try:
+                cur.execute("DELETE FROM books WHERE book_id=?", (book_id,))
+                con.commit()
+                messagebox.showinfo("Success", "Book deleted successfully.")
+                self.listarBooks()
+            except Exception as e:
+                messagebox.showerror("Error", f"Error deleting book: {str(e)}")
+
+    def takeBook(self):
+        if not self.listBooks.curselection():
+            messagebox.showwarning("Warning", "Please select a book to take.")
+            return
+
+        selected_book = str(self.listBooks.get(self.listBooks.curselection()))
+        book_id = selected_book.split('-')[0]
+
+        try:
+            status = cur.execute("SELECT book_status FROM books WHERE book_id=?", (book_id,)).fetchone()[0]
+            if status == 1:
+                messagebox.showinfo("Info", "This book is already taken.")
+            else:
+                cur.execute("UPDATE books SET book_status = ? WHERE book_id = ?", (1, book_id))
+                con.commit()
+                messagebox.showinfo("Success", "Book taken successfully.")
+                self.listarBooks() 
+        except Exception as e:
+            messagebox.showerror("Error", f"Error taking book: {str(e)}")
+
+    def returnBook(self):
+        if not self.listBooks.curselection():
+            messagebox.showwarning("Warning", "Please select a book to return.")
+            return
+
+        selected_book = str(self.listBooks.get(self.listBooks.curselection()))
+        book_id = selected_book.split('-')[0]
+
+        try:
+            status = cur.execute("SELECT book_status FROM books WHERE book_id=?", (book_id,)).fetchone()[0]
+            if status == 0:
+                messagebox.showinfo("Info", "This book is already in the library.")
+            else:
+                cur.execute("UPDATE books SET book_status = ? WHERE book_id = ?", (0, book_id))
+                con.commit()
+                messagebox.showinfo("Success", "Book returned successfully.")
+                self.listarBooks()
+        except Exception as e:
+            messagebox.showerror("Error", f"Error returning book: {str(e)}")
+
+
+    
 class GiveBook(Toplevel):
     def __init__(self):
         Toplevel.__init__(self)
